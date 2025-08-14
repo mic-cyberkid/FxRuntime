@@ -18,7 +18,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 24
-          cache: false
+          
 
       # Download JavaFX JMODS
       - name: Download JavaFX JMODS
