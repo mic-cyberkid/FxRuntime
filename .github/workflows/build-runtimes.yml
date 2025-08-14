@@ -67,6 +67,13 @@ jobs:
             --no-header-files `
             --no-man-pages
 
+      # Copy the JDK binaries (like java.exe) to the runtime's bin directory
+      # This is a new and essential step to make the runtime self-contained.
+      - name: Copy JDK executables
+        shell: pwsh
+        run: |
+          Copy-Item -Path "$env:JAVA_HOME/bin/*" -Destination "javafx-runtime/bin" -Recurse -Force
+          
       # Copy native libraries from the SDK, which jlink does not include
       - name: Copy JavaFX SDK native libraries
         shell: pwsh
