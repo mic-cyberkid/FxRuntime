@@ -30,11 +30,24 @@ jobs:
         run: |
           Write-Host "Downloading JavaFX JMODs for version ${{ env.JAVAFX_VERSION }}"
           Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/${{ env.JAVAFX_VERSION }}/openjfx-${{ env.JAVAFX_VERSION }}_windows-x64_bin-jmods.zip" -OutFile "javafx-jmods.zip"
-          Expand-Archive "javafx-jmods.zip" -DestinationPath "javafx-jmods"
+          Expand-Archive "javafx-jmods.zip" -DestinationPath "javafx-jmods-temp"
 
           Write-Host "Downloading JavaFX SDK for version ${{ env.JAVAFX_VERSION }}"
           Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/${{ env.JAVAFX_VERSION }}/openjfx-${{ env.JAVAFX_VERSION }}_windows-x64_bin-sdk.zip" -OutFile "javafx-sdk.zip"
           Expand-Archive "javafx-sdk.zip" -DestinationPath "javafx-sdk"
+
+      # Copy the JMODs to the root of the javafx-jmods directory
+      - name: Move JMODs to correct directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "javafx-jmods"
+          Copy-Item -Path "javafx-jmods-temp/javafx-jmods-${{ env.JAVAFX_VERSION }}/*" -Destination "javafx-jmods" -Recurse -Force
+
+      # Debugging step: list all files in the JMOD directory to confirm they are present
+      - name: Verify JMOD files are in place
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path "javafx-jmods"
 
       # Build the custom runtime using jlink with the explicit module list
       - name: Create custom JavaFX runtime
