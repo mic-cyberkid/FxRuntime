@@ -24,7 +24,7 @@ jobs:
           distribution: temurin
           java-version: 24
 
-      # Download and extract the JavaFX JMODs and SDK in a single step
+      # Download and extract the JavaFX JMODs and SDK into temporary directories
       - name: Download and extract JavaFX files
         shell: pwsh
         run: |
@@ -34,20 +34,22 @@ jobs:
 
           Write-Host "Downloading JavaFX SDK for version ${{ env.JAVAFX_VERSION }}"
           Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/${{ env.JAVAFX_VERSION }}/openjfx-${{ env.JAVAFX_VERSION }}_windows-x64_bin-sdk.zip" -OutFile "javafx-sdk.zip"
-          Expand-Archive "javafx-sdk.zip" -DestinationPath "javafx-sdk"
+          Expand-Archive "javafx-sdk.zip" -DestinationPath "javafx-sdk-temp"
 
-      # Copy the JMODs to the root of the javafx-jmods directory
-      - name: Move JMODs to correct directory
+      # Correct the directory structure for both JMODs and the SDK
+      # This step moves the nested folders to a flat structure.
+      - name: Correct directory structure
         shell: pwsh
         run: |
+          # Move JMODs to the correct top-level directory
           New-Item -ItemType Directory -Force -Path "javafx-jmods"
           Copy-Item -Path "javafx-jmods-temp/javafx-jmods-${{ env.JAVAFX_VERSION }}/*" -Destination "javafx-jmods" -Recurse -Force
+          Remove-Item -Recurse -Force "javafx-jmods-temp"
 
-      # Debugging step: list all files in the JMOD directory to confirm they are present
-      - name: Verify JMOD files are in place
-        shell: pwsh
-        run: |
-          Get-ChildItem -Path "javafx-jmods"
+          # Move SDK files to the correct top-level directory
+          New-Item -ItemType Directory -Force -Path "javafx-sdk"
+          Copy-Item -Path "javafx-sdk-temp/javafx-sdk-${{ env.JAVAFX_VERSION }}/*" -Destination "javafx-sdk" -Recurse -Force
+          Remove-Item -Recurse -Force "javafx-sdk-temp"
 
       # Build the custom runtime using jlink with the explicit module list
       - name: Create custom JavaFX runtime
@@ -69,6 +71,7 @@ jobs:
       - name: Copy JavaFX SDK native libraries
         shell: pwsh
         run: |
+          # The path is now corrected to look inside the flattened directory structure
           Copy-Item -Path "javafx-sdk/lib/*" -Destination "javafx-runtime/bin" -Recurse -Force
 
       # Package the final runtime into a zip file
