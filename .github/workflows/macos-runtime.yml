@@ -1,0 +1,88 @@
+name: Build JavaFX Runtime - macOS
+
+# This workflow will run manually from the GitHub Actions tab.
+on:
+  workflow_dispatch:
+
+# Define environment variables for easy updates
+env:
+  JAVAFX_VERSION: 24.0.2
+  # Explicitly list the most common JavaFX modules to avoid jlink errors
+  JAVAFX_MODULES: "javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.web,javafx.swing"
+
+jobs:
+  build-macos-runtime:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install Java 24 as requested
+      - name: Setup Java 24
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 24
+
+      # Download and extract the JavaFX JMODs and SDK into temporary directories
+      # Using curl and unzip for macOS instead of Invoke-WebRequest and Expand-Archive
+      - name: Download and extract JavaFX files
+        run: |
+          echo "Downloading JavaFX JMODs for version ${{ env.JAVAFX_VERSION }}"
+          curl -L -o "javafx-jmods.zip" "https://download2.gluonhq.com/openjfx/${{ env.JAVAFX_VERSION }}/openjfx-${{ env.JAVAFX_VERSION }}_mac-aarch64_bin-jmods.zip"
+          unzip javafx-jmods.zip -d javafx-jmods-temp
+
+          echo "Downloading JavaFX SDK for version ${{ env.JAVAFX_VERSION }}"
+          curl -L -o "javafx-sdk.zip" "https://download2.gluonhq.com/openjfx/${{ env.JAVAFX_VERSION }}/openjfx-${{ env.JAVAFX_VERSION }}_mac-aarch64_bin-sdk.zip"
+          unzip javafx-sdk.zip -d javafx-sdk-temp
+
+      # Correct the directory structure for both JMODs and the SDK
+      - name: Correct directory structure
+        run: |
+          # Move JMODs to the correct top-level directory
+          mkdir -p javafx-jmods
+          cp -R javafx-jmods-temp/javafx-jmods-${{ env.JAVAFX_VERSION }}/* javafx-jmods/
+          rm -rf javafx-jmods-temp
+
+          # Move SDK files to the correct top-level directory
+          mkdir -p javafx-sdk
+          cp -R javafx-sdk-temp/javafx-sdk-${{ env.JAVAFX_VERSION }}/* javafx-sdk/
+          rm -rf javafx-sdk-temp
+
+      # Build the custom runtime using jlink with the explicit module list
+      - name: Create custom JavaFX runtime
+        run: |
+          RUNTIME_DIR="javafx-runtime"
+          rm -rf $RUNTIME_DIR
+
+          # The module path separator on macOS is a colon ":"
+          jlink \
+            --module-path "javafx-jmods:$JAVA_HOME/jmods" \
+            --add-modules ${{ env.JAVAFX_MODULES }} \
+            --output $RUNTIME_DIR \
+            --compress 2 \
+            --strip-debug \
+            --no-header-files \
+            --no-man-pages
+
+      # Copy the JDK binaries (like java) to the runtime's bin directory
+      - name: Copy JDK executables
+        run: |
+          cp -R "$JAVA_HOME/bin" "javafx-runtime/"
+
+      # Copy native libraries from the SDK, which jlink does not include
+      - name: Copy JavaFX SDK native libraries
+        run: |
+          cp -R "javafx-sdk/lib/" "javafx-runtime/"
+
+      # Package the final runtime into a zip file
+      - name: Package runtime
+        run: |
+          zip -r javafx-runtime-macos.zip javafx-runtime
+
+      # Upload the zip file as a workflow artifact
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: javafx-runtime-macos
+          path: javafx-runtime-macos.zip
