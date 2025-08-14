@@ -1,4 +1,4 @@
-name: Build JavaFX Runtimes (Linux, Windows, macOS)
+name: Build JavaFX Runtimes (Linux & macOS)
 
 on:
   workflow_dispatch:
@@ -6,12 +6,13 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-    name: Build JavaFX Runtime
+  build-unix:
+    name: Build Linux & macOS
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+        os: [ubuntu-latest, macos-latest]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,18 +26,9 @@ jobs:
       - name: Download JavaFX SDK & JMODs
         shell: bash
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            FX_OS="windows-x64"
-          elif [ "$RUNNER_OS" = "macOS" ]; then
-            FX_OS="osx-x64"
-          else
-            FX_OS="linux-x64"
-          fi
-
-          echo "Downloading JavaFX for $FX_OS..."
+          if [ "$RUNNER_OS" = "macOS" ]; then FX_OS="osx-x64"; else FX_OS="linux-x64"; fi
           curl -L -o openjfx-sdk.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_${FX_OS}_bin-sdk.zip
           curl -L -o openjfx-jmods.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_${FX_OS}_bin-jmods.zip
-
           unzip -q openjfx-sdk.zip -d javafx-sdk
           mkdir javafx-jmods
           unzip -q openjfx-jmods.zip -d javafx-jmods
@@ -44,11 +36,7 @@ jobs:
       - name: Build runtime with jlink
         shell: bash
         run: |
-          # List all javafx modules (basename removes .jmod extension)
           FX_MODULES=$(find javafx-jmods -name "*.jmod" -exec basename {} .jmod \; | paste -sd, -)
-
-          echo "Found JavaFX modules: $FX_MODULES"
-
           $JAVA_HOME/bin/jlink \
             --module-path $JAVA_HOME/jmods:javafx-jmods \
             --add-modules $FX_MODULES \
