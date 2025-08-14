@@ -1,127 +1,58 @@
-name: Build JavaFX Runtime
+name: Build JavaFX Runtime - Windows
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Java 24
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 24
-
-      - name: Download JavaFX SDK
-        run: |
-          wget https://gluonhq.com/download/javafx-24-0-2-linux/ -O javafx-sdk.zip
-          unzip javafx-sdk.zip -d javafx-sdk
-          wget https://gluonhq.com/download/javafx-jmods-24-0-2-linux/ -O javafx-jmods.zip
-          unzip javafx-jmods.zip -d javafx-jmods
-
-      - name: Build Linux runtime
-        run: |
-          FX_MODULES=$(find javafx-jmods -name "*.jmod" -exec basename {} .jmod \; | paste -sd, -)
-          $JAVA_HOME/bin/jlink \
-            --module-path "$JAVA_HOME/jmods:./javafx-jmods" \
-            --add-modules "$FX_MODULES" \
-            --output javafx-runtime-24-linux \
-            --strip-debug \
-            --compress=2 \
-            --no-header-files \
-            --no-man-pages
-
-      - name: Archive Linux runtime
-        run: zip -r javafx-runtime-24-linux.zip javafx-runtime-24-linux
-
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: javafx-runtime-linux
-          path: javafx-runtime-24-linux.zip
-
-  build-windows:
+  build-windows-runtime:
     runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
 
-      - name: Set up Java 24
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 24
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 24
 
-      - name: Download JavaFX SDK
+      - name: Download JavaFX SDK 24
         run: |
-          Invoke-WebRequest -Uri https://gluonhq.com/download/javafx-24-0-2-windows/ -OutFile javafx-sdk.zip
-          Expand-Archive javafx-sdk.zip -DestinationPath javafx-sdk
-          Invoke-WebRequest -Uri https://gluonhq.com/download/javafx-jmods-24-0-2-windows/ -OutFile javafx-jmods.zip
-          Expand-Archive javafx-jmods.zip -DestinationPath javafx-jmods
+          Invoke-WebRequest -Uri "https://gluonhq.com/download/javafx-24-0-2-sdk-windows/" -OutFile "openjfx-sdk.zip"
+          Expand-Archive -Path "openjfx-sdk.zip" -DestinationPath "javafx-sdk-24.0.2"
 
-      - name: Build Windows runtime
+      - name: Prepare JavaFX modules
         run: |
-          $FX_MODULES = (Get-ChildItem javafx-jmods\*.jmod | ForEach-Object { $_.BaseName }) -join ","
+          mkdir jmods
+          Copy-Item -Path "javafx-sdk-24.0.2/lib/*.jmod" -Destination "jmods/"
+          # Create a comma-separated list of all module names
+          $FX_MODULES = (Get-ChildItem jmods | ForEach-Object { $_.BaseName }) -join ","
+          echo "FX_MODULES=$FX_MODULES" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+
+      - name: Build JavaFX runtime
+        run: |
+          $modulePath = "$env:JAVA_HOME\jmods;jmods"
+          $output = "javafx-runtime-24-windows"
+          $fxModules = $env:FX_MODULES
           & "$env:JAVA_HOME\bin\jlink.exe" `
-            --module-path "$env:JAVA_HOME\jmods;.\javafx-jmods" `
-            --add-modules $FX_MODULES `
-            --output javafx-runtime-24-windows `
+            --module-path $modulePath `
+            --add-modules $fxModules `
+            --output $output `
+            --compress 2 `
             --strip-debug `
-            --compress=2 `
             --no-header-files `
             --no-man-pages
 
-      - name: Archive Windows runtime
-        run: Compress-Archive -Path javafx-runtime-24-windows -DestinationPath javafx-runtime-24-windows.zip
+      - name: Zip JavaFX runtime
+        run: |
+          Compress-Archive -Path "javafx-runtime-24-windows" -DestinationPath "javafx-runtime-24-windows.zip"
 
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload Windows runtime artifact
+        uses: actions/upload-artifact@v4
         with:
           name: javafx-runtime-windows
           path: javafx-runtime-24-windows.zip
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Java 24
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 24
-
-      - name: Download JavaFX SDK
-        run: |
-          curl -L -o javafx-sdk.zip https://gluonhq.com/download/javafx-24-0-2-macos/
-          unzip javafx-sdk.zip -d javafx-sdk
-          curl -L -o javafx-jmods.zip https://gluonhq.com/download/javafx-jmods-24-0-2-macos/
-          unzip javafx-jmods.zip -d javafx-jmods
-
-      - name: Build macOS runtime
-        run: |
-          FX_MODULES=$(find javafx-jmods -name "*.jmod" -exec basename {} .jmod \; | paste -sd, -)
-          $JAVA_HOME/bin/jlink \
-            --module-path "$JAVA_HOME/jmods:./javafx-jmods" \
-            --add-modules "$FX_MODULES" \
-            --output javafx-runtime-24-macos \
-            --strip-debug \
-            --compress=2 \
-            --no-header-files \
-            --no-man-pages
-
-      - name: Archive macOS runtime
-        run: zip -r javafx-runtime-24-macos.zip javafx-runtime-24-macos
-
-      - name: Upload macOS artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: javafx-runtime-macos
-          path: javafx-runtime-24-macos.zip
