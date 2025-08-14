@@ -38,14 +38,20 @@ jobs:
           curl -L -o openjfx-jmods.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_${FX_OS}_bin-jmods.zip
 
           unzip -q openjfx-sdk.zip -d javafx-sdk
+          mkdir javafx-jmods
           unzip -q openjfx-jmods.zip -d javafx-jmods
 
       - name: Build runtime with jlink
         shell: bash
         run: |
+          # List all javafx modules (basename removes .jmod extension)
+          FX_MODULES=$(find javafx-jmods -name "*.jmod" -exec basename {} .jmod \; | paste -sd, -)
+
+          echo "Found JavaFX modules: $FX_MODULES"
+
           $JAVA_HOME/bin/jlink \
             --module-path $JAVA_HOME/jmods:javafx-jmods \
-            --add-modules ALL-MODULE-PATH \
+            --add-modules $FX_MODULES \
             --output javafx-runtime-24-${{ matrix.os }} \
             --strip-debug \
             --compress=2 \
