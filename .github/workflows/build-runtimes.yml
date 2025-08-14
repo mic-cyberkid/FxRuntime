@@ -22,7 +22,7 @@ jobs:
 
       - name: Download JavaFX SDK 24
         run: |
-          Invoke-WebRequest -Uri "https://gluonhq.com/download/javafx-24-0-2-sdk-windows/" -OutFile "openjfx-sdk.zip"
+          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-sdk.zip" -OutFile "openjfx-sdk.zip"
           Expand-Archive -Path "openjfx-sdk.zip" -DestinationPath "javafx-sdk-24.0.2"
 
       - name: Prepare JavaFX modules
