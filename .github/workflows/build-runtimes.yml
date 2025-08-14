@@ -20,22 +20,23 @@ jobs:
           distribution: temurin
           java-version: 24
 
-      - name: Download JavaFX SDK 24
+      - name: Download JavaFX SDK and JMods
         run: |
-          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-sdk.zip" -OutFile "openjfx-sdk.zip"
-          Expand-Archive -Path "openjfx-sdk.zip" -DestinationPath "javafx-sdk-24.0.2"
+          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-sdk.zip" -OutFile "javafx-sdk.zip"
+          Expand-Archive -Path "javafx-sdk.zip" -DestinationPath "javafx-sdk-24.0.2"
+
+          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-jmods.zip" -OutFile "javafx-jmods.zip"
+          Expand-Archive -Path "javafx-jmods.zip" -DestinationPath "javafx-jmods"
 
       - name: Prepare JavaFX modules
         run: |
-          mkdir jmods
-          Copy-Item -Path "javafx-sdk-24.0.2/lib/*.jmod" -Destination "jmods/"
           # Create a comma-separated list of all module names
-          $FX_MODULES = (Get-ChildItem jmods | ForEach-Object { $_.BaseName }) -join ","
+          $FX_MODULES = (Get-ChildItem javafx-jmods | ForEach-Object { $_.BaseName }) -join ","
           echo "FX_MODULES=$FX_MODULES" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
 
       - name: Build JavaFX runtime
         run: |
-          $modulePath = "$env:JAVA_HOME\jmods;jmods"
+          $modulePath = "$env:JAVA_HOME\jmods;javafx-jmods"
           $output = "javafx-runtime-24-windows"
           $fxModules = $env:FX_MODULES
           & "$env:JAVA_HOME\bin\jlink.exe" `
