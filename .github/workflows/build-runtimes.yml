@@ -1,68 +1,72 @@
 name: Build JavaFX Runtime - Windows
 
+# This workflow will run manually from the GitHub Actions tab.
 on:
   workflow_dispatch:
+
+# Define environment variables for easy updates
+env:
+  JAVAFX_VERSION: 24.0.2
+  # Explicitly list the most common JavaFX modules to avoid jlink errors
+  JAVAFX_MODULES: "javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.web,javafx.swing"
 
 jobs:
   build-windows-runtime:
     runs-on: windows-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # Install Java 24
-      - name: Setup Java 24
+      # Install a specific version of Java. Java 21 or later is required for modern jlink.
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 24
+          java-version: 21
+          cache: 'maven' # Caching Maven dependencies
 
-      # Download JavaFX JMODs and SDK
-      - name: Download JavaFX JMODs
-        run: |
-          Invoke-WebRequest -Uri https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-jmods.zip -OutFile javafx-jmods.zip
-          Expand-Archive javafx-jmods.zip -DestinationPath javafx-jmods
-
-      - name: Download JavaFX SDK
-        run: |
-          Invoke-WebRequest -Uri https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-sdk.zip -OutFile javafx-sdk.zip
-          Expand-Archive javafx-sdk.zip -DestinationPath javafx-sdk
-
-      # List all modules in javafx-jmods
-      - name: Generate JavaFX module list
+      # Download and extract the JavaFX JMODs and SDK in a single step
+      - name: Download and extract JavaFX files
         shell: pwsh
         run: |
-          $modules = Get-ChildItem javafx-jmods\*.jmod | ForEach-Object { $_.BaseName } 
-          Write-Host "FX_MODULES=$($modules -join ',')" >> $env:GITHUB_ENV
+          Write-Host "Downloading JavaFX JMODs for version ${{ env.JAVAFX_VERSION }}"
+          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/${{ env.JAVAFX_VERSION }}/openjfx-${{ env.JAVAFX_VERSION }}_windows-x64_bin-jmods.zip" -OutFile "javafx-jmods.zip"
+          Expand-Archive "javafx-jmods.zip" -DestinationPath "javafx-jmods"
 
-      # Build runtime using jlink
+          Write-Host "Downloading JavaFX SDK for version ${{ env.JAVAFX_VERSION }}"
+          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/${{ env.JAVAFX_VERSION }}/openjfx-${{ env.JAVAFX_VERSION }}_windows-x64_bin-sdk.zip" -OutFile "javafx-sdk.zip"
+          Expand-Archive "javafx-sdk.zip" -DestinationPath "javafx-sdk"
+
+      # Build the custom runtime using jlink with the explicit module list
       - name: Create custom JavaFX runtime
         shell: pwsh
         run: |
           $runtimeDir = "javafx-runtime"
           Remove-Item -Recurse -Force $runtimeDir -ErrorAction SilentlyContinue
-          $modulePath = "javafx-jmods;$env:JAVA_HOME\jmods"
+
           jlink `
-            --module-path $modulePath `
-            --add-modules $env:FX_MODULES `
+            --module-path "javafx-jmods;$env:JAVA_HOME\jmods" `
+            --add-modules ${{ env.JAVAFX_MODULES }} `
             --output $runtimeDir `
             --compress 2 `
             --strip-debug `
             --no-header-files `
             --no-man-pages
 
-      # Copy SDK /lib for completeness
-      - name: Copy JavaFX SDK /lib
+      # Copy native libraries from the SDK, which jlink does not include
+      - name: Copy JavaFX SDK native libraries
+        shell: pwsh
         run: |
-          Copy-Item -Path "javafx-sdk\lib\*" -Destination "javafx-runtime\lib" -Recurse -Force
+          Copy-Item -Path "javafx-sdk/lib/*" -Destination "javafx-runtime/bin" -Recurse -Force
 
-      # Package runtime as zip
+      # Package the final runtime into a zip file
       - name: Package runtime
         run: |
           Compress-Archive -Path "javafx-runtime\*" -DestinationPath "javafx-runtime-windows.zip"
 
-      # Upload artifact
-      - uses: actions/upload-artifact@v4
+      # Upload the zip file as a workflow artifact
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
           name: javafx-runtime-windows
           path: javafx-runtime-windows.zip
