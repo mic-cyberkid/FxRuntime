@@ -1,0 +1,54 @@
+name: Build Windows & macOS JavaFX Runtimes
+
+on:
+  workflow_dispatch: # manual trigger
+  push:
+    branches: [ main ] # or master if that's your default
+
+jobs:
+  build:
+    name: Build JavaFX Runtime
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 24
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 24
+
+      - name: Download JavaFX SDK & JMODs
+        run: |
+          # Download JavaFX SDK
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            curl -L -o openjfx-sdk.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-sdk.zip
+            curl -L -o openjfx-jmods.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-jmods.zip
+          else
+            curl -L -o openjfx-sdk.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_osx-x64_bin-sdk.zip
+            curl -L -o openjfx-jmods.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_osx-x64_bin-jmods.zip
+          fi
+          
+          unzip openjfx-sdk.zip -d javafx-sdk
+          unzip openjfx-jmods.zip -d javafx-jmods
+
+      - name: Build runtime with jlink
+        run: |
+          $JAVA_HOME/bin/jlink \
+            --module-path $JAVA_HOME/jmods:javafx-jmods \
+            --add-modules ALL-MODULE-PATH \
+            --output javafx-runtime-24-${{ matrix.os }} \
+            --strip-debug \
+            --compress=2 \
+            --no-header-files \
+            --no-man-pages
+
+      - name: Upload runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: javafx-runtime-24-${{ matrix.os }}
+          path: javafx-runtime-24-${{ matrix.os }}
