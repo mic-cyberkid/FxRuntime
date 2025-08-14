@@ -3,7 +3,7 @@ name: Build Windows & macOS JavaFX Runtimes
 on:
   workflow_dispatch: # manual trigger
   push:
-    branches: [ main ] # or master if that's your default
+    branches: [ main ]
 
 jobs:
   build:
@@ -23,8 +23,8 @@ jobs:
           java-version: 24
 
       - name: Download JavaFX SDK & JMODs
+        shell: bash
         run: |
-          # Download JavaFX SDK
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             curl -L -o openjfx-sdk.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-sdk.zip
             curl -L -o openjfx-jmods.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-jmods.zip
@@ -32,7 +32,7 @@ jobs:
             curl -L -o openjfx-sdk.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_osx-x64_bin-sdk.zip
             curl -L -o openjfx-jmods.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_osx-x64_bin-jmods.zip
           fi
-          
+
           unzip openjfx-sdk.zip -d javafx-sdk
           unzip openjfx-jmods.zip -d javafx-jmods
 
@@ -47,8 +47,14 @@ jobs:
             --no-header-files \
             --no-man-pages
 
-      - name: Upload runtime artifact
-        uses: actions/upload-artifact@v4
+      - name: Zip runtime
+        shell: bash
+        run: |
+          zip -r javafx-runtime-24-${{ matrix.os }}.zip javafx-runtime-24-${{ matrix.os }}
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
         with:
-          name: javafx-runtime-24-${{ matrix.os }}
-          path: javafx-runtime-24-${{ matrix.os }}
+          files: javafx-runtime-24-${{ matrix.os }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
