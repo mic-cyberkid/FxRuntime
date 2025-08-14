@@ -16,11 +16,11 @@ These runtimes are created with [`jlink`](https://docs.oracle.com/en/java/javase
 
 ## Available Platforms
 
-| Platform | JDK Version | JavaFX Version | Status |
-|----------|------------|---------------|--------|
-| **Linux (x64)**   | 24 | 24.0.2 | ✅ Ready |
-| **Windows (x64)** | 24 | 24.0.2 | 🚧 Coming Soon |
-| **macOS (x64/arm64)** | 24 | 24.0.2 | 🚧 Coming Soon |
+| Platform | JDK Version | JavaFX Version | Status | Link |
+|----------|------------|---------------|--------|-----------|
+| **Linux (x64)**   | 24 | 24.0.2 | ✅ Ready | [`Download`](https://drive.google.com/file/d/1QldcFL9CoiUBJBR6DVIlTCrFXLQ_eXA_/view?usp=drivesdk)|
+| **Windows (x64)** | 24 | 24.0.2 | 🚧 Coming Soon | Coming soon|
+| **macOS (x64/arm64)** | 24 | 24.0.2 | 🚧 Coming Soon | Coming soon|
 
 ---
 
@@ -29,4 +29,4 @@ These runtimes are created with [`jlink`](https://docs.oracle.com/en/java/javase
 ### 1. Download the Runtime
 Clone this repository or download the release for your OS:
 ```bash
-git clone https://github.com/<your-username>/FxRuntime.git
+git clone https://github.com/mic-cyberkid/FxRuntime.git
