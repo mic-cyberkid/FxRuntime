@@ -1,7 +1,7 @@
-name: Build Windows & macOS JavaFX Runtimes
+name: Build JavaFX Runtimes (Linux, Windows, macOS)
 
 on:
-  workflow_dispatch: # manual trigger
+  workflow_dispatch:
   push:
     branches: [ main ]
 
@@ -10,7 +10,7 @@ jobs:
     name: Build JavaFX Runtime
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
@@ -25,18 +25,23 @@ jobs:
       - name: Download JavaFX SDK & JMODs
         shell: bash
         run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            curl -L -o openjfx-sdk.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-sdk.zip
-            curl -L -o openjfx-jmods.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-jmods.zip
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            FX_OS="windows-x64"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            FX_OS="osx-x64"
           else
-            curl -L -o openjfx-sdk.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_osx-x64_bin-sdk.zip
-            curl -L -o openjfx-jmods.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_osx-x64_bin-jmods.zip
+            FX_OS="linux-x64"
           fi
 
-          unzip openjfx-sdk.zip -d javafx-sdk
-          unzip openjfx-jmods.zip -d javafx-jmods
+          echo "Downloading JavaFX for $FX_OS..."
+          curl -L -o openjfx-sdk.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_${FX_OS}_bin-sdk.zip
+          curl -L -o openjfx-jmods.zip https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_${FX_OS}_bin-jmods.zip
+
+          unzip -q openjfx-sdk.zip -d javafx-sdk
+          unzip -q openjfx-jmods.zip -d javafx-jmods
 
       - name: Build runtime with jlink
+        shell: bash
         run: |
           $JAVA_HOME/bin/jlink \
             --module-path $JAVA_HOME/jmods:javafx-jmods \
@@ -49,8 +54,7 @@ jobs:
 
       - name: Zip runtime
         shell: bash
-        run: |
-          zip -r javafx-runtime-24-${{ matrix.os }}.zip javafx-runtime-24-${{ matrix.os }}
+        run: zip -r javafx-runtime-24-${{ matrix.os }}.zip javafx-runtime-24-${{ matrix.os }}
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
