@@ -17,13 +17,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install a specific version of Java. Java 21 or later is required for modern jlink.
-      - name: Setup Java
+      # Install Java 24 as requested
+      - name: Setup Java 24
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
-          cache: 'maven' # Caching Maven dependencies
+          java-version: 24
 
       # Download and extract the JavaFX JMODs and SDK in a single step
       - name: Download and extract JavaFX files
