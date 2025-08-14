@@ -1,59 +1,67 @@
 name: Build JavaFX Runtime - Windows
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
-  build-windows-runtime:
+  build-windows:
     runs-on: windows-latest
 
     steps:
+      # Checkout repo
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Setup JDK 24
+      # Setup JDK 24
+      - name: Setup Java 24
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 24
+          cache: false
 
-      - name: Download JavaFX SDK and JMods
+      # Download JavaFX JMODS
+      - name: Download JavaFX JMODS
         run: |
-          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-sdk.zip" -OutFile "javafx-sdk.zip"
-          Expand-Archive -Path "javafx-sdk.zip" -DestinationPath "javafx-sdk-24.0.2"
-
           Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-jmods.zip" -OutFile "javafx-jmods.zip"
           Expand-Archive -Path "javafx-jmods.zip" -DestinationPath "javafx-jmods"
 
-      - name: Prepare JavaFX modules
+      # Download JavaFX SDK (optional for /lib files)
+      - name: Download JavaFX SDK
         run: |
-          # Create a comma-separated list of all module names
-          $FX_MODULES = (Get-ChildItem javafx-jmods | ForEach-Object { $_.BaseName }) -join ","
-          echo "FX_MODULES=$FX_MODULES" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_windows-x64_bin-sdk.zip" -OutFile "javafx-sdk.zip"
+          Expand-Archive -Path "javafx-sdk.zip" -DestinationPath "javafx-sdk"
 
-      - name: Build JavaFX runtime
+      # Build runtime using jlink
+      - name: Build JavaFX Runtime
         run: |
-          $modulePath = "$env:JAVA_HOME\jmods;javafx-jmods"
-          $output = "javafx-runtime-24-windows"
-          $fxModules = $env:FX_MODULES
+          # Module path: JDK jmods + JavaFX jmods
+          $modulePath = "javafx-jmods;$env:JAVA_HOME\jmods"
+
+          # Collect all JavaFX modules
+          $fxModules = (Get-ChildItem -Path "javafx-jmods" -Filter "*.jmod" | ForEach-Object { $_.BaseName }) -join ","
+
+          Write-Host "Using modules: $fxModules"
+          Write-Host "Module path: $modulePath"
+
+          # Run jlink
           & "$env:JAVA_HOME\bin\jlink.exe" `
-            --module-path $modulePath `
-            --add-modules $fxModules `
-            --output $output `
-            --compress 2 `
-            --strip-debug `
-            --no-header-files `
-            --no-man-pages
+              --module-path $modulePath `
+              --add-modules $fxModules `
+              --output "javafx-runtime-24-windows" `
+              --compress 2 `
+              --strip-debug `
+              --no-header-files `
+              --no-man-pages
 
-      - name: Zip JavaFX runtime
+      # Zip the runtime for download
+      - name: Zip runtime
         run: |
-          Compress-Archive -Path "javafx-runtime-24-windows" -DestinationPath "javafx-runtime-24-windows.zip"
+          Compress-Archive -Path "javafx-runtime-24-windows\*" -DestinationPath "javafx-runtime-24-windows.zip"
 
-      - name: Upload Windows runtime artifact
+      # Upload artifact
+      - name: Upload Runtime
         uses: actions/upload-artifact@v4
         with:
-          name: javafx-runtime-windows
+          name: javafx-runtime-24-windows
           path: javafx-runtime-24-windows.zip
