@@ -19,8 +19,8 @@ These runtimes are created with [`jlink`](https://docs.oracle.com/en/java/javase
 | Platform | JDK Version | JavaFX Version | Status | Link |
 |----------|------------|---------------|--------|-----------|
 | **Linux (x64)**   | 24 | 24.0.2 | ✅ Ready | [`Download`](https://drive.google.com/file/d/1QldcFL9CoiUBJBR6DVIlTCrFXLQ_eXA_/view?usp=drivesdk)|
-| **Windows (x64)** | 24 | 24.0.2 | 🚧 Coming Soon | Coming soon|
-| **macOS (x64/arm64)** | 24 | 24.0.2 | 🚧 Coming Soon | Coming soon|
+| **Windows (x64)** | 24 | 24.0.2 | ✅ Ready |  [`Download`](https://drive.google.com/file/d/1QujL6qIziD8yXUwzMLpn4OZH0jZ194OA/view?usp=drivesdk)|
+| **macOS (x64/arm64)** | 24 | 24.0.2 | ✅ Ready| [`Download`](https://drive.google.com/file/d/1hd4SMOy4MHSkZpcdRR14U_Wr_QNUKlV3/view?usp=drivesdk)|
 
 ---
 
